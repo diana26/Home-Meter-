@@ -27,7 +27,7 @@
  String Fin = "END";
  String Div = "$";
  int RORWN;
- int Vrms = sqrt(125); //Volts
+ double Vrms = sqrt(2) * (125); //Volts
  double kw; //Potencia  
  //double kwh;
  int Ran = random(0 , 9);
@@ -68,9 +68,7 @@ void setup()
   delay(10);
   digitalWrite(RFM69_RST, LOW);
   delay(10);
-  endMillis = millis();
-  unsigned long time = endMillis - startMillis;
-  Khw = khW + 
+  
   if (!rf69_manager.init()) {
     Serial.println("RFM69 radio init failed");
     while (1);
@@ -104,18 +102,25 @@ uint8_t data[] = "  OK";
 //--------------------------------------------------------------------------------------/
 void loop() {
     
-
-  double Irms = emon1.calcIrms(1480);  // Calculate Irms only
-  
+  endMillis = millis();
+  unsigned long times = endMillis - startMillis;
+  double Irms = emon1.calcIrms(1480);  // Calculate Irms only 
+  Kwh = Kwh + ((double)Irms * ((double)times/60/1000000));
+  startMillis = millis();
   delay(2000);  // Wait 2 seconds between transmits, could also 'sleep' here!
 
-  kw = Irms*V/1000; //kilowatts
+  kw = Irms*Vrms/1000; //kilowatts
   //kwh = kw*x*t; //kilowatts por hora
-  Serial.println(t);
+  Serial.println("printing values: ");
+  //Serial.println(t);
+  Serial.print("print kw: ");
   Serial.println(kw);
+  Serial.print("print Irms: ");
   Serial.println(Irms);
+  Serial.print("print Vrms");
   Serial.println(Vrms);
- 
+  Serial.print("print Kwh");
+  Serial.println(Kwh);
   RORW=RORWS+Div+MY_ADDRESS+Div+DEST_ADDRESS+Div+Ran+Div+Irms+Div+Vrms+Div+kw+Div+Div+Div+Fin;
 
   
