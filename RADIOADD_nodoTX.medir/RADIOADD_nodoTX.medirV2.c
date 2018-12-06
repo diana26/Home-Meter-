@@ -104,28 +104,30 @@ void loop() {
     
   endMillis = millis();
   unsigned long times = endMillis - startMillis;
-  double Irms = emon1.calcIrms(1480);  // Calculate Irms only
-  double I = Irms/sqrt(2); 
-  //Calculation of watts per hour
-  Kwh = Kwh + ((double)Irms * ((double)times/60/60/1000));
+  double Irms = (emon1.calcIrms(1480));  // Calculate Irms only 
+  double I = Irms / sqrt(2);
+  Kwh = Kwh + ((double)I * ((double)times/60/60/1000));
+  
   startMillis = millis();
-  delay(2000);  // Wait 2 seconds between transmits, could also 'sleep' here!
+  delay(500);  // Wait 2 seconds between transmits, could also 'sleep' here!
 
-  kw = Irms*Vrms/1000; //kilowatts
+  kw = I*Vrms/1000; //kilowatts
   //kwh = kw*x*t; //kilowatts por hora
   Serial.println("printing values: ");
   //Serial.println(t);
   Serial.print("print kw: ");
   Serial.println(kw);
-  Serial.print("print Irms: ");
-  Serial.println(Irms);
+  Serial.print("print Irms1: ");
+  Serial.println(Irms); 
   Serial.print("print I: ");
   Serial.println(I);
   Serial.print("print Vrms");
   Serial.println(Vrms);
   Serial.print("print Kwh");
   Serial.println(Kwh);
-  RORW=RORWS+Div+MY_ADDRESS+Div+DEST_ADDRESS+Div+Ran+Div+Irms+Div+Vrms+Div+kw+Div+Div+Div+Fin;
+  Serial.print("print Analog: ");
+  Serial.println(analogRead(1));
+  RORW=RORWS+Div+MY_ADDRESS+Div+DEST_ADDRESS+Div+Ran+Div+I+Div+Vrms+Div+kw+Div+Div+Div+Fin;
 
   
   char radiopacket[RORW.length()+1];
