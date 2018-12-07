@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include "EmonLib.h"
 #include <SPI.h>
 #include <RH_RF69.h>
@@ -28,16 +29,23 @@
  String Div = "$";
  int RORWN;
  double Vrms = sqrt(2) * (125); //Volts
- double kw; //Potencia  
+ double watts; //Potencia  
  //double kwh;
  int Ran = random(0 , 9);
  float t;
  int x = 1;
- double Kwh = 0;
+ double Kwh;
+ //double KwhAux;
  unsigned long endMillis;
- unsigned long startMillis; 
+ unsigned long startMillis;
+ int count = 0;
+ //double coeff = 3.3/1024.0; 
  EnergyMonitor emon1;
 
+union double_Khw {
+  double AuxKwh;
+  byte AuxKwhByte[4];
+} unionKwh;
 
 
 // Radio Initialization---------------------------------------------------------------/
@@ -92,7 +100,18 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 
   emon1.current(1, 111.1);             // Current: input pin, calibration.
-
+  Serial.print("Reading memory: ");
+  //making the new killowatts hour variable
+  /*for (int i = 0; i < 4; i++) {
+    EEPROM.write(i, 0);
+  }*/
+  Serial.println(unionKwh.AuxKwh);
+  unionKwh.AuxKwhByte[0] = EEPROM.read(0);
+  unionKwh.AuxKwhByte[1] = EEPROM.read(1);
+  unionKwh.AuxKwhByte[2] = EEPROM.read(2);
+  unionKwh.AuxKwhByte[3] = EEPROM.read(3);
+  Serial.println(unionKwh.AuxKwh);
+  Kwh = unionKwh.AuxKwh;
 }
 
 // Dont put this on the stack:
@@ -103,56 +122,68 @@ uint8_t data[] = "  OK";
 void loop() {
     
   endMillis = millis();
+  double I, Irms;
   unsigned long times = endMillis - startMillis;
-  double Irms = emon1.calcIrms(1480);  // Calculate Irms only
-  double I = Irms/sqrt(2); 
-  //Calculation of watts per hour
-  Kwh = Kwh + ((double)Irms * ((double)times/60/60/1000));
-  startMillis = millis();
-  delay(2000);  // Wait 2 seconds between transmits, could also 'sleep' here!
-
-  kw = Irms*Vrms/1000; //kilowatts
-  //kwh = kw*x*t; //kilowatts por hora
-  Serial.println("printing values: ");
-  //Serial.println(t);
-  Serial.print("print kw: ");
-  Serial.println(kw);
-  Serial.print("print Irms: ");
-  Serial.println(Irms);
-  Serial.print("print I: ");
-  Serial.println(I);
-  Serial.print("print Vrms");
-  Serial.println(Vrms);
-  Serial.print("print Kwh");
-  Serial.println(Kwh);
-  RORW=RORWS+Div+MY_ADDRESS+Div+DEST_ADDRESS+Div+Ran+Div+Irms+Div+Vrms+Div+kw+Div+Div+Div+Fin;
-
   
-  char radiopacket[RORW.length()+1];
-  RORW.toCharArray(radiopacket,RORW.length()+1);
+  Irms = (emon1.calcIrms(1480));  // Calculate Irms only 
+  I = Irms / sqrt(2);
+  watts = I*Vrms;
+  unionKwh.AuxKwh = Kwh;
+    Kwh = Kwh + ((double)watts * ((double)times/60/60/1000));
+    
+    Serial.print("This is the value o union + kwh: ");
+    Serial.println(unionKwh.AuxKwh);
+    Serial.print("printing union: ");
+    Serial.println(unionKwh.AuxKwh);
+    EEPROM.write(0, unionKwh.AuxKwhByte[0]);
+    EEPROM.write(1, unionKwh.AuxKwhByte[1]);
+    EEPROM.write(2, unionKwh.AuxKwhByte[2]);
+    EEPROM.write(3, unionKwh.AuxKwhByte[3]);
+    startMillis = millis();
+    delay(1000);  // Wait 2 seconds between transmits, could also 'sleep' here!
+     //kilowatts
+    //kwh = kw*x*t; //kilowatts por hora
+    Serial.println("printing values: ");
+    //Serial.println(t);
+    Serial.print("print kw: ");
+    Serial.println(watts);
+    Serial.print("print Irms1: ");
+    Serial.println(Irms); 
+    Serial.print("print I: ");
+    Serial.println(I);
+    Serial.print("print Vrms");
+    Serial.println(Vrms);
+    Serial.print("print Kwh");
+    Serial.println(Kwh);
+    Serial.print("print Analog: ");
+    Serial.println((analogRead(1)-514));
+    RORW=RORWS+Div+MY_ADDRESS+Div+DEST_ADDRESS+Div+Ran+Div+I+Div+Vrms+Div+watts+Div+Kwh+Div+Fin;
   
-  itoa(packetnum++, radiopacket+60, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
-  
-  // Send a message to the DESTINATION!
-  if (rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
-    // Now wait for a reply from the server
-    uint8_t len = sizeof(buf);
-    uint8_t from;   
-    if (rf69_manager.recvfromAckTimeout(buf, &len, 2000, &from)) {
-      buf[len] = 0; // zero out remaining string
-      
-      Serial.print("Got reply from #"); Serial.print(from);
-      Serial.print(" [RSSI :");
-      Serial.print(rf69.lastRssi());
-      Serial.print("] : ");
-      Serial.println((char*)buf);     
-      } else {
-      Serial.println("No reply, is anyone listening?");
+    
+    char radiopacket[RORW.length()+1];
+    RORW.toCharArray(radiopacket,RORW.length()+1);
+    
+    itoa(packetnum++, radiopacket+60, 10);
+    Serial.print("Sending "); Serial.println(radiopacket);
+    
+    // Send a message to the DESTINATION!
+    if (rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
+      // Now wait for a reply from the server
+      uint8_t len = sizeof(buf);
+      uint8_t from;   
+      if (rf69_manager.recvfromAckTimeout(buf, &len, 2000, &from)) {
+        buf[len] = 0; // zero out remaining string
+        
+        Serial.print("Got reply from #"); Serial.print(from);
+        Serial.print(" [RSSI :");
+        Serial.print(rf69.lastRssi());
+        Serial.print("] : ");
+        Serial.println((char*)buf);     
+        } else {
+        Serial.println("No reply, is anyone listening?");
+      }
+    } else {
+      Serial.println("Sending failed (no ack)");
     }
-  } else {
-    Serial.println("Sending failed (no ack)");
-  }
-  x = x+1;
-  Serial.println(x);
+  
   }
