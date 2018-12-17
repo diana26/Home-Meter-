@@ -25,7 +25,7 @@
  String RORWS="Green";
  String RORW;
  String Fin = "END";
- String Div = "$";
+ char Div = '$';
  int RORWN;
  double Vrms = sqrt(2) * (125); //Volts
  double kw; //Potencia  
