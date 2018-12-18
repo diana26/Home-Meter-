@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include "EmonLib.h"
 #include <SPI.h>
 #include <RH_RF69.h>
@@ -22,26 +23,39 @@
 
 // Variables -------------------------------------------------------------------------/
 
- String RORWS="Green";
- String RORW;
- String Fin = "END";
- char Div = '$';
  int RORWN;
- //double Vrms = sqrt(2) * (125); //Volts
- double Vrms = 125;
- double kw; //Potencia  
- //double kwh;
- int Ran = random(0 , 9);
- float t;
+ int ID = 100;
  int x = 0;
- double Kwh = 0.0;
- unsigned long endMillis;
- unsigned long startMillis; 
  int count = 0;
  int number = 0;
+ int CheckSum = 0;
+ 
+ String RORWS="Green";
+ String PACK;
+ String RORW;
+ 
+ char Div = '$';
+ char Coma = ',';
+ 
+ //double Vrms = sqrt(2) * (125); //Volts
+ double Vrms = 125;
+ double kw; //Potencia 
+ double Kwh = 0.0000; 
+ //double kwh;
+ 
+ float t;
+ 
+ unsigned long endMillis;
+ unsigned long startMillis; 
+
+ union {
+    byte b[4];
+    double d = 0.0000;
+  }dato;
+
+  
+
  EnergyMonitor emon1;
-
-
 
 // Radio Initialization---------------------------------------------------------------/
 
@@ -95,8 +109,16 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 
   emon1.current(0, 111.1);             // Current: input pin, calibration.
-
   Serial.println("Irms      Watts      Kw      Kwh      Analog");
+//  for (int i = 0; i <4; i++) {
+//    EEPROM.write(i, 0);
+//  }
+  for (int i = 0; i < 4; i++) {
+    dato.b[i] = EEPROM.read(i);
+  }
+   Serial.print("killowatts setup: ");
+   Serial.println(dato.d);
+   Kwh = dato.d;
 }
 
 // Dont put this on the stack:
@@ -110,31 +132,48 @@ void loop() {
   double Irms = (emon1.calcIrms(1480));  // Calculate Irms only 
   double I = Irms / sqrt(2);
   double watts = (Irms * Vrms);
-  kw = watts/1000;
-  //Serial.print("Watts; ");
-  //Serial.println(watts);
-  //Kwh = Kwh + ((double)watts * ((double)times/60/60/1000.0));
-  Kwh = Kwh + (watts * (2.05/60/60/1000));
+  //Kwh = Kwh + ((double)watts * ((double)times/60/60/60/100000.0));
   startMillis = millis();
+  Kwh = Kwh + (watts * (0.5125/60/60));
   //delay(500);  // Wait 2 seconds between transmits, could also 'sleep' here!
-  //Kwh = double(Kwh)/1000.0;  kw = ((Irms*Vrms)/1000); //kilowatts
+  //Kwh = double(Kwh)/1000.0;
+  //double probe = 50.0/1000.0;
+  kw = (watts/1000); //kilowatts
+  int serial = emon1.printingSerial(0);
   //kwh = kw*x*t; //kilowatts por hora
   //Serial.println("printing values: ");
   //Serial.println(t);
-  
-  Serial.print(Irms);
-  Serial.print("      "); 
+  //Serial.print("print kw: ");
+  Serial.print(Irms); 
+  Serial.print("      ");
   Serial.print(watts);
   Serial.print("      ");
   Serial.print(kw);
-  //Serial.println(Vrms);
   Serial.print("      ");
-  Serial.print(Kwh);
+  Serial.print(Kwh, 4);
   Serial.print("      ");
-  Serial.println(analogRead(1));
+  Serial.println(serial);
+  dato.d = Kwh;
+  for (int i = 0; i < 4; i++) {
+    EEPROM.write(i, dato.b[i]);
+  }
+  //Serial.print("print Irms1: ");
   
-  RORW=RORWS+Div+MY_ADDRESS+Div+DEST_ADDRESS+Div+Ran+Div+Irms+Div+Vrms+Div+kw+Div+Kwh+Div+Fin;
+  //Serial.print("print I: ");
+  //Serial.print(I);
+  //Serial.print("print Vrms");
+  //Serial.print(Vrms);
+  //Serial.print("print Kwh");
+  //Serial.print("print Analog: ");
+  //Serial.println(analogRead(1));
 
+  PACK=RORWS+Div+ID+Div+DEST_ADDRESS+Div+Irms+Coma+Vrms+Coma+watts+Coma+Kwh+Div+MY_ADDRESS+Div;
+  
+  //CheckSum --------------------------------------------------------------------------/
+  int CheckSum = PACK.length();
+  //-----------------------------------------------------------------------------------/
+  
+  RORW = PACK+(String)CheckSum;
   
   char radiopacket[RORW.length()+1];
   RORW.toCharArray(radiopacket,RORW.length()+1);
@@ -145,6 +184,7 @@ void loop() {
   // Send a message to the DESTINATION!
   if ( x == 124) {
     x = 0;
+    ID++;
     if (rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
       // Now wait for a reply from the server
       uint8_t len = sizeof(buf);
