@@ -113,11 +113,11 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 
   emon1.current(0, 111.1);             // Current: input pin, calibration.
-  emon2.current(2, 90.11);
+  emon2.current(1, 90.11);
   Serial.println("Irms      Watts      Kw      Kwh      Analog");
-  for (int i = 0; i <4; i++) {
-    EEPROM.write(i, 0);
-  }
+//  for (int i = 0; i <4; i++) {
+//    EEPROM.write(i, 0);
+//  }
   for (int i = 0; i < 4; i++) {
     dato.b[i] = EEPROM.read(i);
   }
@@ -151,7 +151,7 @@ void loop() {
   double wattsTotal = watts + watts2;
   //Kwh = Kwh + ((double)watts * ((double)times/60/60/60/100000.0));
   startMillis = millis();
-  Kwh = Kwh + (watts * (0.5125/60/60));
+  Kwh = Kwh + (wattsTotal * (0.5125/60/60));
   //Kwh2 = Khw2 + (watts2 * (0.5125/60/60));
   //delay(500);  // Wait 2 seconds between transmits, could also 'sleep' here!
   kw = (watts/1000); //kilowatts
@@ -203,11 +203,11 @@ void loop() {
   RORW.toCharArray(radiopacket,RORW.length()+1);
   
   itoa(packetnum++, radiopacket+60, 10);
-  //Serial.print("Sending "); Serial.println(radiopacket);
+  Serial.print("Sending "); Serial.println(radiopacket);
   
   // Send a message to the DESTINATION!
   
-  if ( x == 62) {
+  if ( x == 30) {
     Serial.println("entrando a sending");
     x = 0;
     ID++;
@@ -230,7 +230,7 @@ void loop() {
       Serial.println("Sending failed (no ack)");
     }
     }
-    else if ( x != 62) {
+    else if ( x != 30) {
       x++;
     }
   //Serial.println(x);
