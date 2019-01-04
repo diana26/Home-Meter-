@@ -192,7 +192,7 @@ void loop() {
   //Serial.println(freeMemory());
 
   PACK=RORWS+Div+ID+Div+DEST_ADDRESS+Div+Irms+Coma+Irms2+Coma+Vrms+Coma+wattsTotal+Coma+Kwh+Div+MY_ADDRESS+Div;
-  
+  //PACK=RORWS+Div+ID;
   //CheckSum --------------------------------------------------------------------------/
   int CheckSum = PACK.length();
   //-----------------------------------------------------------------------------------/
@@ -207,7 +207,7 @@ void loop() {
   
   // Send a message to the DESTINATION!
   
-  if ( x == 65) {
+  if ( x == 32) {
     Serial.println("entrando a sending");
     x = 0;
     ID++;
@@ -223,16 +223,20 @@ void loop() {
         Serial.print(" [RSSI :");
         Serial.print(rf69.lastRssi());
         Serial.print("] : ");
+        Serial.print(" [RSSI2 :");
+        Serial.print(rf69.rssiRead());
+        Serial.print("] : ");
         Serial.println((char*)buf);     
         } else {
         Serial.println("No reply, is anyone listening?");
       }
     } else {
       Serial.println("Sending failed (no ack)");
+      Serial.println(rf69.rssiRead());
     }
     }
     //delay(20000);
-    else if ( x != 65) {
+    else if ( x != 32) {
       x++;
     }
   //Serial.println(x);

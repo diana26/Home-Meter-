@@ -207,7 +207,7 @@ void loop() {
   
   // Send a message to the DESTINATION!
   
-  if ( x == 65) {
+  if ( x == 32) {
     Serial.println("entrando a sending");
     x = 0;
     ID++;
@@ -232,7 +232,7 @@ void loop() {
     }
     }
     //delay(20000);
-    else if ( x != 65) {
+    else if ( x != 32) {
       x++;
     }
   //Serial.println(x);
