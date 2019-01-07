@@ -7,8 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 
-//Radio Setup ------------------------------------------------------------------------/
-
+//Radio Setup 
 #define RF69_FREQ 434.0 // Change to 434.0 or 915.0 depending on the radio.
 
 #define DEST_ADDRESS   1 // Where to send packets to! (P1-Int Dest Address)
@@ -22,7 +21,7 @@
   #define LED           13
 #endif
 
-// Variables -------------------------------------------------------------------------/
+// Variables 
 
  int RORWN;
  int ID = 100;
@@ -30,38 +29,31 @@
  int count = 0;
  int number = 0;
  int CheckSum = 0;
- 
+
+ // Variables for the Package
  String RORWS="001";
  String PACK;
  String RORW;
- 
  char Div = '$';
  char Coma = ',';
- 
- //double Vrms = sqrt(2) * (125); //Volts
- double Vrms = 125;
- double kw; //Potencia 
- double kw2;
- double Kwh = 0.0000;
- double Kwh2 = 0.0000; 
- //double kwh;
- 
- float t;
- 
- unsigned long endMillis;
- unsigned long startMillis; 
 
+ // Variables for the measurements
+ double Vrms = 230; //Value of voltage
+ double kw; // declaration of kilowatts in Line1  
+ double kw2; // declaration of kilowatts in Line2 
+ double Kwh = 0.0000; // declaration of Kilowatts per hour in both lines 
+
+// Creation of an union for save the Kwh in EEPROM memory
  union {
     byte b[4];
     double d = 0.0000;
   }dato;
 
-  
-
+ // Objects for the current measurement
  EnergyMonitor emon1;
  EnergyMonitor emon2;
 
-// Radio Initialization---------------------------------------------------------------/
+// Radio Initialization
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // Singleton instance of the radio driver
 
@@ -69,13 +61,9 @@ RHReliableDatagram rf69_manager(rf69, MY_ADDRESS); // Class to manage message de
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
-//-------------------------------------------------------------------------------------/
-
 void setup() 
 {
   Serial.begin(9600);
-  startMillis = millis();
-  int minCurr = 1000;
   //while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
   pinMode(LED, OUTPUT);     
   pinMode(RFM69_RST, OUTPUT);
@@ -90,6 +78,7 @@ void setup()
   digitalWrite(RFM69_RST, LOW);
   delay(10);
   
+  // Check if the radio is properly connected
   if (!rf69_manager.init()) {
     Serial.println("RFM69 radio init failed");
     while (1);
@@ -111,13 +100,19 @@ void setup()
   
   pinMode(LED, OUTPUT);
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
-
-  emon1.current(0, 131.1);             // Current: input pin, calibration.
+  
+  // Current: input pin, calibration for both lines
+  emon1.current(0, 171.1);             
   emon2.current(1, 131.1);
-  Serial.println("Irms      Watts      Kw      Kwh      Analog"); 
-//  for (int i = 0; i <4; i++) {
-//    EEPROM.write(i, 0);
-//  }
+  Serial.println("Irms      Watts      Kw      Kwh      Analog");
+  
+  // Delete the Kwh information from the EEPROM, use it if you want to reset an Arduino
+  /* for (int i = 0; i <4; i++) {
+    EEPROM.write(i, 0);
+  } */
+  
+  // Print the value of Kwh from the EEPROM ,and assig the value of the union
+  //comment it the first time you run an Arduino, otherwise the Serial prints a "nan"
   for (int i = 0; i < 4; i++) {
     dato.b[i] = EEPROM.read(i);
   }
@@ -130,41 +125,39 @@ void setup()
 uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
 uint8_t data[] = "  OK";
 
-//--------------------------------------------------------------------------------------/
+
 void loop() {
-  endMillis = millis();
+  // Variables for the current 1 and 2, must not be declared in setup
   double Irms;
   double Irms2;
-  unsigned long times = endMillis - startMillis;
+  
+  // Printing the value of Analog Reads in both lines, the pin is the parameter
   int serial = emon1.printingSerial(0);
-//  if (serial == 513 || serial == 512) {
-//    Irms = 0;
-//  }
-//  else {
-//  Irms = (emon1.calcIrms(1480));  // Calculate Irms only 
-//  }
+  int serial2 = emon2.printingSerial(1);
+  
+  // Assign the value of the current 1 and 2, using calcIrms function from library
   Irms = (emon1.calcIrms(1480));
   Irms2 = (emon2.calcIrms(1480));
-  double I = Irms / sqrt(2);
+  
+  //Assign the value of watts in both lines, also wattsTotal
   double watts = (Irms * Vrms);
   double watts2 = (Irms2 * Vrms);
   double wattsTotal = watts + watts2;
-  //Kwh = Kwh + ((double)watts * ((double)times/60/60/60/100000.0));
-  startMillis = millis();
+
+  // Use this equation to determine the Kwh value
   Kwh = Kwh + (wattsTotal * (0.5125/60/60));
-  //Kwh2 = Khw2 + (watts2 * (0.5125/60/60));
-  //delay(500);  // Wait 2 seconds between transmits, could also 'sleep' here!
-  kw = (watts/1000); //kilowatts
+  
+  // Assig the value of kilowatts in both lines (divide watts by 1000)
+  kw = (watts/1000); 
   kw2 = (watts2/1000);
-  //Serial.println(t);
-  //Serial.print("print kw: ");
+
+  //Printing values for Testing purpose
   Serial.print(Irms); 
   Serial.print("      ");
   Serial.print(watts);
   Serial.print("      ");
   Serial.print(kw);
   Serial.print("      ");
-  
   Serial.print(Kwh, 4);
   Serial.print("      ");
   Serial.print(Irms2); 
@@ -173,42 +166,28 @@ void loop() {
   Serial.print("      ");
   Serial.println(kw2);
   Serial.print("      ");
-  //Serial.print(Kwh, 4);
-//  Serial.print("      ");
-  //Serial.println(serial);
+
+  // Assign the Kwh value to the union, and save it into the EEPROM
   dato.d = Kwh;
   for (int i = 0; i < 4; i++) {
     EEPROM.write(i, dato.b[i]);
   }
-  //Serial.print("print Irms1: "); 
-  //Serial.print("print I: ");
-  //Serial.print(I);
-  //Serial.print("print Vrms");
-  //Serial.print(Vrms);
-  //Serial.print("print Kwh");
-  //Serial.print("print Analog: ");
-  //Serial.println(analogRead(1));
-  //Serial.print(F("freeMemory loop = "));
-  //Serial.println(freeMemory());
 
+  // Create the String package message
   PACK=RORWS+Div+ID+Div+DEST_ADDRESS+Div+Irms+Coma+Irms2+Coma+Vrms+Coma+wattsTotal+Coma+Kwh+Div+MY_ADDRESS+Div;
   
-  //CheckSum --------------------------------------------------------------------------/
+  // CheckSum to add at the end of the package
   int CheckSum = PACK.length();
-  //-----------------------------------------------------------------------------------/
-  
   RORW = PACK+(String)CheckSum;
-  
   char radiopacket[RORW.length()+1];
   RORW.toCharArray(radiopacket,RORW.length()+1);
   
-  itoa(packetnum++, radiopacket+60, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
-  
   // Send a message to the DESTINATION!
-  
-  if ( x == 32) {
+  // Check approx every minute and send the package to the receiver,
+  // When x reaches 70 the package have to be sent to the receiver
+  if ( x == 35) {
     Serial.println("entrando a sending");
+    Serial.print("Sending "); Serial.println(radiopacket);
     x = 0;
     ID++;
     if (rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
@@ -218,7 +197,6 @@ void loop() {
       uint8_t from;   
       if (rf69_manager.recvfromAckTimeout(buf, &len, 2000, &from)) {
         buf[len] = 0; // zero out remaining string
-        
         Serial.print("Got reply from #"); Serial.print(from);
         Serial.print(" [RSSI :");
         Serial.print(rf69.lastRssi());
@@ -231,10 +209,8 @@ void loop() {
       Serial.println("Sending failed (no ack)");
     }
     }
-    //delay(20000);
-    else if ( x != 32) {
+    // Otherwise, add one to the x until reach 70
+    else if ( x != 35) {
       x++;
     }
-  //Serial.println(x);
-  //count++;
   }

@@ -118,18 +118,18 @@ void setup()
 //  for (int i = 0; i <4; i++) {
 //    EEPROM.write(i, 0);
 //  }
-  for (int i = 0; i < 4; i++) {
-    dato.b[i] = EEPROM.read(i);
-  }
-   Serial.print("killowatts setup: ");
-   Serial.println(dato.d);
-   Kwh = dato.d;
-}
+//  for (int i = 0; i < 4; i++) {
+//    dato.b[i] = EEPROM.read(i);
+//  }
+//   Serial.print("killowatts setup: ");
+//   Serial.println(dato.d);
+//   Kwh = dato.d;
+//}
 
 // Dont put this on the stack:
 uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
 uint8_t data[] = "  OK";
-
+}
 //--------------------------------------------------------------------------------------/
 void loop() {
   endMillis = millis();
@@ -137,12 +137,6 @@ void loop() {
   double Irms2;
   unsigned long times = endMillis - startMillis;
   int serial = emon1.printingSerial(0);
-//  if (serial == 513 || serial == 512) {
-//    Irms = 0;
-//  }
-//  else {
-//  Irms = (emon1.calcIrms(1480));  // Calculate Irms only 
-//  }
   Irms = (emon1.calcIrms(1480));
   Irms2 = (emon2.calcIrms(1480));
   double I = Irms / sqrt(2);
@@ -180,16 +174,7 @@ void loop() {
   for (int i = 0; i < 4; i++) {
     EEPROM.write(i, dato.b[i]);
   }
-  //Serial.print("print Irms1: "); 
-  //Serial.print("print I: ");
-  //Serial.print(I);
-  //Serial.print("print Vrms");
-  //Serial.print(Vrms);
-  //Serial.print("print Kwh");
-  //Serial.print("print Analog: ");
-  //Serial.println(analogRead(1));
-  //Serial.print(F("freeMemory loop = "));
-  //Serial.println(freeMemory());
+  
 
   PACK=RORWS+Div+ID+Div+DEST_ADDRESS+Div+Irms+Coma+Irms2+Coma+Vrms+Coma+wattsTotal+Coma+Kwh+Div+MY_ADDRESS+Div;
   //PACK=RORWS+Div+ID;
@@ -203,7 +188,7 @@ void loop() {
   RORW.toCharArray(radiopacket,RORW.length()+1);
   
   itoa(packetnum++, radiopacket+60, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
+  //Serial.print("Sending "); Serial.println(radiopacket);
   
   // Send a message to the DESTINATION!
   
