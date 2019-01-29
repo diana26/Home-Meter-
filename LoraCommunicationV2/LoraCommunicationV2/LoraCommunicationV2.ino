@@ -22,7 +22,6 @@
 #endif
 
 // Variables 
-
  int RORWN;
  int ID = 100;
  int x = 0;
@@ -31,7 +30,7 @@
  int CheckSum = 0;
 
  // Variables for the Package
- String RORWS="001";
+ String RORWS="002";
  String PACK;
  String RORW;
  char Div = '$';
@@ -41,7 +40,8 @@
  double Vrms = 230; //Value of voltage
  double kw; // declaration of kilowatts in Line1  
  double kw2; // declaration of kilowatts in Line2 
- double Kwh = 0.0000; // declaration of Kilowatts per hour in both lines 
+ double Kwh = 0.0000; // declaration of Kilowatts per hour in both lines
+
 
 // Creation of an union for save the Kwh in EEPROM memory
  union {
@@ -147,7 +147,7 @@ void loop() {
   // Use this equation to determine the Kwh value
   Kwh = Kwh + (wattsTotal * (0.5125/60/60));
   
-  // Assig the value of kilowatts in both lines (divide watts by 1000)
+  // Assign the value of kilowatts in both lines (divide watts by 1000)
   kw = (watts/1000); 
   kw2 = (watts2/1000);
 
@@ -181,15 +181,19 @@ void loop() {
   RORW = PACK+(String)CheckSum;
   char radiopacket[RORW.length()+1];
   RORW.toCharArray(radiopacket,RORW.length()+1);
-  
+  int y;
   // Send a message to the DESTINATION!
   // Check approx every minute and send the package to the receiver,
   // When x reaches 70 the package have to be sent to the receiver
   if ( x == 35) {
     Serial.println("entrando a sending");
     Serial.print("Sending "); Serial.println(radiopacket);
-    x = 0;
     ID++;
+    x = 0;
+    y = 0;
+    Serial.println(y);
+    while (y < 35) {
+      Serial.println("hi");
     if (rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
       Serial.println("entra here");
       // Now wait for a reply from the server
@@ -201,14 +205,19 @@ void loop() {
         Serial.print(" [RSSI :");
         Serial.print(rf69.lastRssi());
         Serial.print("] : ");
-        Serial.println((char*)buf);     
+        Serial.println((char*)buf);
+        //delay(1000);     
         } else {
         Serial.println("No reply, is anyone listening?");
       }
     } else {
       Serial.println("Sending failed (no ack)");
     }
+    y++;
+    //delay(50);
     }
+    //x++;
+  }
     // Otherwise, add one to the x until reach 70
     else if ( x != 35) {
       x++;
